@@ -55,7 +55,7 @@ jobs:
           echo "🧪 Testing URL accessibility..."
           curl -I -s "$API_URL" | head -5
 
-          RESPONSE=$(curl -L -X POST "$API_URL/api/admin/versions/register" \
+          RESPONSE=$(curl --location-trusted -X POST "$API_URL/api/admin/versions/register" \
             -H "Authorization: Bearer $LYCEUM_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
