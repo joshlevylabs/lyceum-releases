@@ -40,7 +40,17 @@ jobs:
         run: |
           echo "🚀 Registering version $VERSION for $BRAND..."
 
-          RESPONSE=$(curl -X POST "$LYCEUM_API_URL/api/admin/versions/register" \
+          # Remove trailing slash from URL if present
+          API_URL="${LYCEUM_API_URL%/}"
+
+          # Make sure URL starts with https://
+          if [[ ! "$API_URL" =~ ^https?:// ]]; then
+            API_URL="https://${API_URL}"
+          fi
+
+          echo "🔗 API URL: $API_URL"
+
+          RESPONSE=$(curl -L -X POST "$API_URL/api/admin/versions/register" \
             -H "Authorization: Bearer $LYCEUM_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
@@ -70,26 +80,22 @@ jobs:
             exit 1
           fi
 
-      - name: Post success comment
+      - name: Post success summary
         if: steps.register.outputs.status == 'success'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.payload.release.id,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '✅ Version **${{ steps.version.outputs.version }}** has been registered in Lyceum Admin Panel.\n\n**Status:** Unreleased (requires admin approval)\n\n🔗 [Manage Versions in Admin Panel](${{ secrets.LYCEUM_API_URL }}/admin/versions)'
-            })
+        run: |
+          echo "## ✅ Version Registration Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Version **${{ steps.version.outputs.version }}** has been registered in Lyceum Admin Panel." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** Unreleased (requires admin approval)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [Manage Versions in Admin Panel](${{ secrets.LYCEUM_API_URL }}/admin/versions)" >> $GITHUB_STEP_SUMMARY
 
-      - name: Notify on failure
+      - name: Post failure summary
         if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.payload.release.id,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '❌ Failed to register version **${{ steps.version.outputs.version }}** in Lyceum.\n\nPlease check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.'
-            })
+        run: |
+          echo "## ❌ Version Registration Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Failed to register version **${{ steps.version.outputs.version }}** in Lyceum." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the workflow logs above for details." >> $GITHUB_STEP_SUMMARY
